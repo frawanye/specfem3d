@@ -28,7 +28,7 @@
 */
 
 #include "mesh_constants_gpu.h"
-
+#include <string.h>
 /* ----------------------------------------------------------------------------------------------- */
 
 // ASSEMBLY - mpi data transfer between CPU-GPU

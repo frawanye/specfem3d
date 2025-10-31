@@ -82,8 +82,12 @@
 // sets realw as "working" precision
 #if CUSTOM_REAL == 4
 typedef float realw;
+typedef float3 realw3;
+#define make_realw3 make_float3
 #elif CUSTOM_REAL == 8
 typedef double realw;
+typedef double3 realw3;
+#define make_realw3 make_double3
 #endif
 
 /* ----------------------------------------------------------------------------------------------- */

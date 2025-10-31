@@ -42,12 +42,21 @@ __global__ void UpdateDispVeloc_kernel(realw* displ,
   // because of block and grid sizing problems, there is a small
   // amount of buffer at the end of the calculation
   if (id < size) {
-    realw acc = accel[id];
-    realw vel = veloc[id];
+    realw3* displ_vec = reinterpret_cast<realw3*>(displ);
+    realw3* veloc_vec = reinterpret_cast<realw3*>(veloc);
+    realw3* accel_vec = reinterpret_cast<realw3*>(accel);
 
-    displ[id] = displ[id] + deltat * vel + deltatsqover2 * acc;
-    veloc[id] = vel + deltatover2 * acc;
-    accel[id] = 0.0f; // can do this using memset...not sure if faster,probably not
+    float3 d = displ_vec[id];
+    float3 v = veloc_vec[id];
+    float3 a = accel_vec[id];
+
+    d = d + deltat * v + deltatsqover2 * a;
+    v = v + deltatover2 * a;
+    a = make_realw3(0.0f, 0.0f, 0.0f);
+
+    displ_vec[id] = d;
+    veloc_vec[id] = v;
+    accel_vec[id] = a;
   }
 
 // -----------------
@@ -58,6 +67,9 @@ __global__ void UpdateDispVeloc_kernel(realw* displ,
 // arithmetic intensity: 6 FLOP / 32 BYTES ~ 0.19 FLOP/BYTE
 // -----------------
 // nvprof: 24599250 flops for 4099875 threads -> 6 FLOP per thread
+// -----------------
+// Note: Using float3/double3 (realw3), both FLOPs and DRAM access should triple, so the 
+// arithmetic intensity should remain the same.
 }
 
 /* ----------------------------------------------------------------------------------------------- */

@@ -51,7 +51,7 @@ void FC_FUNC_(update_displacement_cuda,
   realw deltatover2 = *deltatover2_F;
   realw deltatsqover2 = *deltatsqover2_F;
 
-  int size = NDIM * mp->NGLOB_AB;
+  int size = mp->NGLOB_AB;
 
   int blocksize = BLOCKSIZE_KERNEL1;
   int size_padded = ((int)ceil(((double)size)/((double)blocksize)))*blocksize;
@@ -176,8 +176,8 @@ void FC_FUNC_(update_displacement_cuda,
     stop_timing_gpu(&start,&stop,"UpdateDispVeloc_kernel",&time);
     // time in seconds
     time = time / 1000.;
-    // performance: 6 FLOPS per thread
-    flops = 6.0 * size;
+    // performance: 6 * 3 FLOPS per thread (3 components per point)
+    flops = 6.0 * 3.0 * size;
     //printf("  performance: %f GFlop/s num_blocks x/y: %d %d threads: %d\n", flops/time * 1.e-9,num_blocks_x,num_blocks_y,size);
     printf("  performance: %f GFlop/s\n", flops/time * 1.e-9);
   }

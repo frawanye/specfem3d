@@ -44,10 +44,11 @@ __global__ void UpdateDispVeloc_kernel(realw* displ,
   if (id < size) {
     realw acc = accel[id];
     realw vel = veloc[id];
+    realw dis = displ[id];
 
-    displ[id] = displ[id] + deltat * vel + deltatsqover2 * acc;
-    veloc[id] = vel + deltatover2 * acc;
-    accel[id] = 0.0f; // can do this using memset...not sure if faster,probably not
+    __builtin_nontemporal_store(dis + deltat * vel + deltatsqover2 * acc, &displ[id]);
+    __builtin_nontemporal_store(vel + deltatover2 * acc, &veloc[id]);
+    __builtin_nontemporal_store(0.0f, &accel[id]);
   }
 
 // -----------------

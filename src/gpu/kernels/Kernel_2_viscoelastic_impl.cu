@@ -603,6 +603,15 @@ __device__  __forceinline__ void get_spatial_derivatives(realw* xixl,realw* xiyl
     // local padded index
     int offset = ispec_irreg*NGLL3_PADDED + tx;
 
+    // *(xil.x) = get_global_cr(&d_xix[offset]);
+    //*(xil.y) = get_global_cr(&d_xiy[offset]);
+    //*(xil.z) = get_global_cr(&d_xiz[offset]);
+    //*(etal.x) = get_global_cr(&d_etax[offset]);
+    //*(etal.y) = get_global_cr(&d_etay[offset]);
+    //*(etal.z) = get_global_cr(&d_etaz[offset]);
+    //*(gammal.x) = get_global_cr(&d_gammax[offset]);
+    //*(gammal.y) = get_global_cr(&d_gammay[offset]);
+    //*(gammal.z) = get_global_cr(&d_gammaz[offset]);
     *xixl = get_global_cr(&d_xix[offset]);
     *xiyl = get_global_cr(&d_xiy[offset]);
     *xizl = get_global_cr(&d_xiz[offset]);
@@ -634,14 +643,17 @@ __device__  __forceinline__ void get_spatial_derivatives(realw* xixl,realw* xiyl
   // compute derivatives of ux, uy and uz with respect to x, y and z
   if (ispec_irreg >= 0 ){
     // irregular_element
+    // (*duxdl) = (*xil)*(*tempx1l) + (*etal)*(*tempx2l) + (*gammal)*(*tempx3l);
     (*duxdxl) = (*xixl)*(*tempx1l) + (*etaxl)*(*tempx2l) + (*gammaxl)*(*tempx3l);
     (*duxdyl) = (*xiyl)*(*tempx1l) + (*etayl)*(*tempx2l) + (*gammayl)*(*tempx3l);
     (*duxdzl) = (*xizl)*(*tempx1l) + (*etazl)*(*tempx2l) + (*gammazl)*(*tempx3l);
 
+    // (*duydl) = (*xil)*(*tempy1l) + (*etal)*(*tempy2l) + (*gammal)*(*tempy3l);
     (*duydxl) = (*xixl)*(*tempy1l) + (*etaxl)*(*tempy2l) + (*gammaxl)*(*tempy3l);
     (*duydyl) = (*xiyl)*(*tempy1l) + (*etayl)*(*tempy2l) + (*gammayl)*(*tempy3l);
     (*duydzl) = (*xizl)*(*tempy1l) + (*etazl)*(*tempy2l) + (*gammazl)*(*tempy3l);
 
+    // (*duzdl) = (*xil)*(*tempz1l) + (*etal)*(*tempz2l) + (*gammal)*(*tempz3l);
     (*duzdxl) = (*xixl)*(*tempz1l) + (*etaxl)*(*tempz2l) + (*gammaxl)*(*tempz3l);
     (*duzdyl) = (*xiyl)*(*tempz1l) + (*etayl)*(*tempz2l) + (*gammayl)*(*tempz3l);
     (*duzdzl) = (*xizl)*(*tempz1l) + (*etazl)*(*tempz2l) + (*gammazl)*(*tempz3l);
@@ -670,6 +682,10 @@ __device__  __forceinline__ void get_spatial_derivatives(realw* xixl,realw* xiyl
 // computes dot product between tensor and derivatives
 
 __device__  __forceinline__ void get_dot_product(realw jacobianl,
+                                                 // realw3 sigma_x_vec,
+                                                 // realw3 sigma_y_vec,
+                                                 // realw3 sigma_z_vec,
+                                                 // realw3* sh_temp_vec,
                                                  realw sigma_xx,realw sigma_xy,realw sigma_yx,
                                                  realw sigma_xz,realw sigma_zx,realw sigma_yy,
                                                  realw sigma_yz,realw sigma_zy,realw sigma_zz,
@@ -683,21 +699,25 @@ __device__  __forceinline__ void get_dot_product(realw jacobianl,
   if (threadIdx.x < NGLL3) {
     if (ispec_irreg >= 0){
       //irregular element
+      // sh_temp_vec[tx] = jacobianl * (sigma_x_vec * Dxl + sigma_y_vec * Dyl + sigma_z_vec * Dzl);
       sh_tempx[tx] = jacobianl * (sigma_xx*Dxl + sigma_yx*Dyl + sigma_zx*Dzl); // sh_tempx1/sh_tempx2/sh_tempx3
       sh_tempy[tx] = jacobianl * (sigma_xy*Dxl + sigma_yy*Dyl + sigma_zy*Dzl); // sh_tempy1/..
       sh_tempz[tx] = jacobianl * (sigma_xz*Dxl + sigma_yz*Dyl + sigma_zz*Dzl); // sh_tempz1/..
     }
     else if (component == 1){
+      // sh_temp_vec[tx] = jacobian_regular * (sigma_x_vec * xix_regular);
       sh_tempx[tx] = jacobian_regular * (sigma_xx*xix_regular); // sh_tempx1
       sh_tempy[tx] = jacobian_regular * (sigma_xy*xix_regular); // sh_tempy1
       sh_tempz[tx] = jacobian_regular * (sigma_xz*xix_regular); // sh_tempz1
     }
     else if (component == 2){
+      // sh_temp_vec[tx] = jacobian_regular * (sigma_y_vec * xix_regular);
       sh_tempx[tx] = jacobian_regular * (sigma_yx*xix_regular); // sh_tempx2
       sh_tempy[tx] = jacobian_regular * (sigma_yy*xix_regular); // sh_tempy2
       sh_tempz[tx] = jacobian_regular * (sigma_yz*xix_regular); // sh_tempz2
 
     }else{
+      // sh_temp_vec[tx] = jacobian_regular * (sigma_z_vec * xix_regular);
       sh_tempx[tx] = jacobian_regular * (sigma_zx*xix_regular); // sh_tempx3
       sh_tempy[tx] = jacobian_regular * (sigma_zy*xix_regular); // sh_tempy3
       sh_tempz[tx] = jacobian_regular * (sigma_zz*xix_regular); // sh_tempz3
@@ -846,21 +866,21 @@ Kernel_2_noatt_iso_impl(const int nb_blocks_to_compute,
 
   // spectral-element id
   // iphase-1 and working_element-1 for Fortran->C array conventions
-  working_element = d_phase_ispec_inner_elastic[bx + num_phase_ispec_elastic*(d_iphase-1)] - 1;
+  working_element = __builtin_nontemporal_load(&d_phase_ispec_inner_elastic[bx + num_phase_ispec_elastic*(d_iphase-1)]) - 1;
 
   // PML
   if (pml_conditions){
     // PML elements will be computed later
-    if(d_is_CPML[working_element]) return;
+    if(__builtin_nontemporal_load(&d_is_CPML[working_element])) return;
   }
 
-  ispec_irreg = d_irregular_element_number[working_element] - 1;
+  ispec_irreg = __builtin_nontemporal_load(&d_irregular_element_number[working_element]) - 1;
 
   // local padded index
   offset = working_element*NGLL3_PADDED + tx;
 
   // global index
-  iglob = d_ibool[offset] - 1 ;
+  iglob = __builtin_nontemporal_load(&d_ibool[offset]) - 1 ;
 
 // counts:
 // + 8 FLOP
@@ -886,8 +906,8 @@ Kernel_2_noatt_iso_impl(const int nb_blocks_to_compute,
 //
 // + 3 float * 125 threads = 1500 BYTE
 
-  kappal = d_kappav[offset];
-  mul = d_muv[offset];
+  kappal = __builtin_nontemporal_load(&d_kappav[offset]);
+  mul = __builtin_nontemporal_load(&d_muv[offset]);
 
 // counts:
 // + 0 FLOP
@@ -980,9 +1000,9 @@ Kernel_2_noatt_iso_impl(const int nb_blocks_to_compute,
 // + 0 BYTE
 
   // gets double weights
-  fac1 = d_wgllwgll_yz[K*NGLLX+J];
-  fac2 = d_wgllwgll_xz[K*NGLLX+I];
-  fac3 = d_wgllwgll_xy[J*NGLLX+I];
+  fac1 = __builtin_nontemporal_load(&d_wgllwgll_yz[K*NGLLX+J]);
+  fac2 = __builtin_nontemporal_load(&d_wgllwgll_xz[K*NGLLX+I]);
+  fac3 = __builtin_nontemporal_load(&d_wgllwgll_xy[J*NGLLX+I]);
 
 // counts:
 // + 3 * 2 FLOP = 6 FLOP
